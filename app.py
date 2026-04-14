@@ -1,32 +1,58 @@
+import dash
+from dash import dcc, html, Input, Output
 import pandas as pd
-from dash import Dash, html, dcc
 import plotly.express as px
 
-app = Dash(__name__)
-
 df = pd.read_csv("formatted_data.csv")
-df['date'] = pd.to_datetime(df['date'])
-df = df.sort_values(by="date")
+app = dash.Dash(__name__)
 
-fig = px.line(
-    df, 
-    x="date", 
-    y="sales", 
-    title="Pink Morsel Sales: Pre vs Post Price Increase",
-    labels={"date": "Date", "sales": "Total Sales (USD)"}
-)
+app.layout = html.Div(id="wrapper", children=[
+    html.H1("Pink Morsel Visualiser", id="header"),
+    
+    html.Div(id="control-container", children=[
+        html.Label("Select Region:"),
+        dcc.RadioItems(
+            id="region-filter",
+            options=[
+                {"label": "North", "value": "north"},
+                {"label": "East", "value": "east"},
+                {"label": "South", "value": "south"},
+                {"label": "West", "value": "west"},
+                {"label": "All", "value": "all"}
+            ],
+            value="all",
+            inline=True
+        ),
+    ]),
 
-fig.add_vline(
-    x="2021-01-15", 
-    line_dash="dash", 
-    line_color="red", 
-    annotation_text="Price Increase"
-)
-
-app.layout = html.Div([
-    html.H1("Soul Foods Sales Visualiser", style={'textAlign': 'center'}),
-    dcc.Graph(id='sales-chart', figure=fig)
+    dcc.Graph(id="sales-line-chart")
 ])
 
+@app.callback(
+    Output("sales-line-chart", "figure"),
+    Input("region-filter", "value")
+)
+def update_graph(selected_region):
+    if selected_region == "all":
+        filtered_df = df
+    else:
+        filtered_df = df[df["region"] == selected_region]
+
+    fig = px.line(
+        filtered_df, 
+        x="date", 
+        y="sales", 
+        title=f"Pink Morsel Sales - {selected_region.capitalize()} Region"
+    )
+    
+    fig.update_layout(
+        template="plotly_dark",
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color="#ffffff"
+    )
+    
+    return fig
+
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run(debug=True)
